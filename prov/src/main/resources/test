@@ -1,0 +1,47 @@
+/*
+	Superbox
+		Description
+		Entities
+			Imagen
+				Description
+				Content
+			Entity 2
+				Description
+				Content
+		Activities
+			Creation
+				Description
+				Content (creo que irá vacío)
+			Edition
+				Description
+				Content
+		Agents
+			modeloIA
+				Description
+				Content
+		Usage (solo en edicion)
+			Descripcion
+			Content
+				actividad
+				imagen (usada)
+				role (buscar un rol que cuadre)
+		WasGeneratedBy
+			_:g1
+				Description
+				Content
+					actividad 
+					entidad
+		WasAttributedTo
+			_:a1
+				Description
+				Content
+					entidad 
+					agente
+		WasDerivedFrom (solo en edicion)
+			_:d1
+				Description
+				Content
+					generatedentity - img2
+					usedentity - img1
+					type - edition
+ */
