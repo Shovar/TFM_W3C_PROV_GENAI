@@ -32,9 +32,7 @@ public class Entity {
 
     @Override
     public String toString() {
-        return "{\"prov:id\":" + "\""+ id +"\"," + 
-                  "\"prov:type\": \""+ type +"\"" +
-                "}";
+        return "\"ex:"+ id +"\": { \"prov:type\": \""+ type +"\"" + "}";
     }
 
 }

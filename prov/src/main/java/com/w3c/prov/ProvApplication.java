@@ -64,29 +64,52 @@ public class ProvApplication {
 
 	public static String create_entity(Boolean is_creation, String target, String source) throws Exception {
 		String ret_entity;
-		Entity entity = new Entity("https://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia", target);
+		Entity entity = new Entity("img/jpeg", target);
 		if(is_creation == false){ //Si es una edición, añadir una segunda entidad
 			Entity entity2 = new Entity("img/jpeg", source);
-			ret_entity = "\"prov:entity\":[" + entity.toString() + "," + entity2.toString() + "]";
+			ret_entity = "\"entity\":{" + entity.toString() + "," + entity2.toString() + "}";
 		}
 		else{
-			ret_entity = "\"prov:entity\" :" + entity.toString() ;
+			ret_entity = "\"entity\" :{" + entity.toString() + "}";
 		}
 		return ret_entity;
 	}
 
 	public static String create_activiy(String id, String type) throws Exception{
-		return "\"prov:activity\": {\"prov:id\": \""+ id +"\", \"prov:type\": \"" +type+ "\"}";
+		return "\"activity\": {\"ex:" + id + "\": { \"prov:type\": \"" +type+ "\"} }";
 	}
 
 	public static String create_agent(String model, String version, String prompt, String u_prompt) throws Exception{
 		String username = System.getProperty("user.name");
-		Agent agent = new Agent( model ,"SoftwareAgent", version, prompt, u_prompt);
-		Agent person = new Agent(username ,"Person");
-		String ret_agent = "\"prov:agent\":[" + agent.toStringSW() + "," + person.toStringP() + "]";
+		Agent agent = new Agent( model ,"https://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia", version, prompt, u_prompt);
+		Agent person = new Agent(username);
+		String ret_agent = "\"agent\":{" + agent.toStringSW() + "," + person.toStringP() + "}";
 		return ret_agent ;
 	}
 
+	public static String create_WAIGB(String id, String targetName, String activity, String formattedDate, String model ,String version, String prompt, String u_prompt){
+		return "\"_:"+ id +"\":{ \"prov:entity\": \"ex:"+ targetName +"\" ,  \"prov:activity\": \"ex:"+ activity +"\", \"provai:model\": \""+ model + "\" , \"provai:version\": \""+ version + "\", \"provai:prompt\": \""+ prompt +"\", \"provai:u_prompt\": \""+ u_prompt +"\" , \"prov:Time\": \""+ formattedDate + "\"}";
+	}
+
+	public static String create_WAW(String id, String targetName, String activity, String agent, String role){
+		return "\"_:"+ id +"\":{ \"prov:activity\": \"ex:"+ activity +"\", \"prov:agent\": \"ex:"+ agent +"\", \"prov:role\": \""+ role +"\"}";
+	}
+
+	public static String create_WDF(String id, String generatedEntity, String usedEntity, String type){
+		return "\"_:"+ id +"\":{ \"prov:generatedEntity\": \"ex:"+ generatedEntity +"\", \"prov:usedEntity\": \"ex:"+ usedEntity +"\", \"prov:type\": \""+ type +"\"}";
+	}
+
+	public static String create_WAT(String id, String entity, String agent, String type){
+		return "\"_:"+ id +"\":{ \"prov:entity\": \"ex:"+ entity +"\", \"prov:agent\": \"ex:"+ agent +"\", \"prov:type\": \""+ type +"\"}";
+	}
+
+	public static String create_WU(String id, String activity, String entity, String formattedDate){
+		return "\"_:"+ id +"\":{ \"prov:activity\": \"ex:"+ activity +"\", \"prov:entity\": \"ex:"+ entity +"\", \"prov:Time\": \""+ formattedDate +"\"}";
+	}
+
+	public static String create_WABO(String id, String activity, String agent1, String agent2){
+		return "\"_:"+ id +"\":{ \"prov:activity\": \"ex:"+ activity +"\", \"prov:delegate\": \"ex:"+ agent1 +"\", \"prov:responsible\": \"ex:"+ agent2 +"\"}";
+	}
 
 	public static void create_prov(Boolean is_creation, String assetName ,String model, String version, String prompt, String u_prompt) throws Exception{
 		Date date = new Date();
@@ -100,35 +123,33 @@ public class ProvApplication {
 		String targetName = new String();
 		String content = new String();
 		String activity = new String();
-		
+		String prefix = " \"prefix\": { \"xsd\": \"http://www.w3.org/2001/XMLSchema#\", \"ex\": \"http://example.com/\", \"prov\": \"http://www.w3.org/ns/prov#\", \"provai\": \"http://example.com/provgenai#\" }";
 		if (is_creation) {
 			targetUrl = assetFileUrl + "-created";
 			targetName = assetName + "-created";
-			activity = create_activiy("a1", "Creation");
-			wasGeneratedBy = "\"prov:wasGeneratedBy\": {\"prov:entity\": \""+ targetName +"\" ,  \"prov:activity\": \"a1\" , \"prov:time\": \""+ formattedDate + "\"}";			
-			wasAssociatedWith = "\"prov:wasAssociatedWith\": {\"prov:activity\": \"a1\", \"prov:agent\": \"ag1\", \"prov:role\": \"Image Generator\"}";
+			activity = create_activiy("a1", "Creation");		
+			wasAssociatedWith = "\"wasAssociatedWith\": {" + create_WAW("wAW1", targetName, "a1", model, "Image Generator") + "}";
 				
 		}else{
 			targetUrl = assetFileUrl + "-edited";
 			targetName = assetName + "-edited";
 			activity = create_activiy("a1", "Edition");
-			wasUsedBy = "\"prov:used\": {\"prov:activity\": \"a1\" , \"prov:entity\": \""+ targetName  +"\" , \"prov:time\": \""+ formattedDate + "\"}";
-			wasGeneratedBy = "\"prov:wasGeneratedBy\": {\"prov:entity\": \""+ targetName  +"\" ,  \"prov:activity\": \"a1\" , \"prov:time\": \""+ formattedDate + "\"}";			
-			wasDerivedFrom = "\"prov:wasDerivedFrom\": {\"prov:generatedEntity\": \""+ targetName  +"\", \"prov:usedEntity\": \""+ assetName +"\", \"prov:type\": \"Edition\"}";
-			wasAssociatedWith = "\"prov:wasAssociatedWith\": {\"prov:activity\": \"a1\", \"prov:agent\": \"ag1\", \"prov:role\": \"Image Editor\"}";
+			wasUsedBy = "\"used\": { "+ create_WU("u1", "a1", targetName, formattedDate) + "}";		
+			wasDerivedFrom = "\"wasDerivedFrom\": { "+ create_WDF("wDF1", targetName, assetName, "Edition") + "}";
+			wasAssociatedWith = "\"wasAssociatedWith\": {" + create_WAW("wAW1", targetName, "a1", model, "Image Editor") +"}";
 		}
+		wasGeneratedBy = "\"wasGeneratedBy\": { "+ create_WAIGB("wGB1", targetName, "a1", formattedDate, model, version, prompt, u_prompt)+"}";	
+		String username = System.getProperty("user.name");
+		String actedOnBehalfOf = "\"actedOnBehalfOf\": {"+ create_WABO("aOBO1", "a1", model, username) +"}";
+		String wasAttributedTo = "\"wasAttributedTo\": {"+ create_WAT("wAT1", targetName, model, "authorship") + "}"; 
 		String entity = create_entity(is_creation, targetName , assetName);
 		String agent = create_agent(model, version, prompt, u_prompt);
-		String username = System.getProperty("user.name");
-		String actedOnBehalfOf = "\"prov:actedOnBehalfOf\": {\"prov:delegate\": \"ag1\", \"prov:responsible\": \""+ username +"\"}";
-		String wasAttributedTo = "\"prov:wasAttributedTo\": {\"prov:entity\": \""+ targetName  + "\", \"prov:agent\": \"ag1\", \"prov:type\": \"authorship\"}"; 
-		
 		// Create the content string
 		if (is_creation) {
-			content = "{\"document\": {" + entity + "," + activity +  "," + agent + "," + actedOnBehalfOf + "," + wasGeneratedBy + "," + wasAssociatedWith + "," + wasAttributedTo +"}}";	
+			content = '{' + prefix + "," + entity + "," + activity +  "," + agent + ","  + actedOnBehalfOf + "," + wasGeneratedBy + "," + wasAssociatedWith + "," + wasAttributedTo + '}';	
 		}
 		else{
-			content = "{\"document\": {" + entity + "," + activity +  "," + agent + "," + actedOnBehalfOf + "," + wasUsedBy + "," + wasGeneratedBy + "," + wasDerivedFrom + "," + wasAssociatedWith + "," + wasAttributedTo +"}}";
+			content = '{' + prefix + "," + entity + "," + activity +  "," + agent + "," + actedOnBehalfOf + "," + wasUsedBy + "," + wasGeneratedBy + "," + wasDerivedFrom + "," + wasAssociatedWith + "," + wasAttributedTo + '}'; ;
 		}
 	
 		// Create a JsonBox object
