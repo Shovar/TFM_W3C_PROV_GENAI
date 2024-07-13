@@ -30,4 +30,10 @@ class ProvApplicationTests {
 		assertEquals("\"activity\": {\"ex:a1\": { \"prov:type\": \"Creation\"} }", ProvApplication.create_activiy("a1", "Creation"));
 	}
 
+	@Test
+	void Create_jwt() throws Exception {
+		String jwt = ProvApplication.getJwt("toni");
+		System.out.println(jwt.toString());
+	}
+
 }

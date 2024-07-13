@@ -9,10 +9,24 @@ import org.springframework.context.annotation.Import;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.FileNotFoundException;
+import java.security.Key;
 import java.util.Base64;
 import java.util.Date;
+import java.util.HashMap;
 import java.text.SimpleDateFormat;
 import java.util.List;
+import java.util.Map;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jws;
+import io.jsonwebtoken.JwsHeader;
+import io.jsonwebtoken.JwtBuilder;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.SignatureException;
+import io.jsonwebtoken.security.Keys;
+
+import javax.crypto.SecretKey;
+import javax.swing.*;
 
 import org.springframework.util.ResourceUtils;
 import org.mipams.jumbf.entities.JsonBox;
@@ -26,11 +40,7 @@ import org.mipams.jumbf.config.JumbfConfig;
 import org.mipams.jumbf.services.JpegCodestreamGenerator;
 import org.mipams.jumbf.services.JpegCodestreamParser;
 
-import javax.crypto.SecretKey;
-import javax.swing.*;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.security.Keys;
+
 
 
 
@@ -43,24 +53,68 @@ public class ProvApplication {
 	static JpegCodestreamParser jpegCodestreamParser;
     static JumbfBoxService jumbfBoxService;
 	static String assetFileUrl;
+	static String JWT_KEY = "8963SZ7KKZlDb8OzfHJDKXvHtyNjklMZeZcZYxXb0mxHGPvu3sKKkBBuP7WsATf1srPgt1Oprg77XS6PYyMo6sqgcaSoxUthnRf";
 
-	public static String getJwt() {
-		SecretKey secretKey = generalKey();
-		Claims claims = Jwts.claims().subject("Toni Garcia").build();
-		Date date = new Date();
-		return Jwts.builder().id(assetFileUrl)
-				.subject("W3C_Prov_for_GENAI")
-				.claims(claims)
-				.issuer("Toni Garcia")
-				.issuedAt(date)
-				.signWith(secretKey)
-				.compact();
-		}
-	
-	public static SecretKey generalKey(){
-		byte[] encodeKey = Base64.getDecoder().decode("U2FtcGxlIHBhc3N3b3JkIGZvciB3YzMgcHJvdiBkZXRlY3R5b25nIEdlbiBBSSBpbWFnZXM=");
-		return Keys.hmacShaKeyFor(encodeKey);
+	public static String getJwt(String content) throws Exception{
+		
+		JwtBuilder myBuilder = Jwts.builder();
+		//Header
+		myBuilder.header().keyId("1")
+						.contentType("text/json")
+						.and();
+
+		//Payloads - Start
+		Map<String,Object> myContent = new HashMap<>();
+		myContent.put("userId","1");
+		myContent.put("sessionId","1");
+		myBuilder.content(content, "text/json");
+		//Payloads - End
+
+		//Signature
+		Key mySigningKey = Keys.hmacShaKeyFor(Base64.getDecoder().decode(JWT_KEY));
+		myBuilder.signWith(mySigningKey);
+
+		String jwtToken = myBuilder.compact();
+		return jwtToken;
 	}
+
+	 public static String[] decode_and_validate_jwt(String jwt) {
+
+        // Decode and validate the JWT
+        try {
+            // Convert the secret to a Key object
+			SecretKey key = Keys.hmacShaKeyFor(Base64.getDecoder().decode(JWT_KEY));
+
+            // Parse the JWT
+            byte[] content= Jwts.parser()
+                                .verifyWith(key)
+                                .build()
+                                .parseSignedContent(jwt)
+								.getPayload();
+            // Print out the claims
+			String str = new String(content);
+			byte[] signature = Jwts.parser()
+								.verifyWith(key)
+								.build()
+								.parseSignedContent(jwt)
+								.getDigest();
+			//String sign = new String(signature);
+			String sign = jwt;
+			String header = Jwts.parser()
+								.verifyWith(key)
+								.build()
+								.parseSignedContent(jwt)
+								.getHeader().toString();
+								
+			String[] ret = {header, str, sign};
+			return ret;
+        } catch (SignatureException e) {
+            System.out.println("Invalid JWT signature");
+        } catch (Exception e) {
+            System.out.println("Invalid JWT token");
+        }
+		return null;
+    }
 
 	public static String create_entity(Boolean is_creation, String target, String source) throws Exception {
 		String ret_entity;
@@ -155,7 +209,9 @@ public class ProvApplication {
 		// Create a JsonBox object
 		JsonBox jsonBox = new JsonBox();
 		JsonContentType jsonContentType = new JsonContentType();
-		jsonBox.setContent(content.getBytes());
+
+		String[] decoded_jwt = decode_and_validate_jwt(getJwt(content));
+		jsonBox.setContent(("{\"header\": " + decoded_jwt[0] + ", \"payload\": " + decoded_jwt[1] + ", \"signature\": " + decoded_jwt[2] + "}").getBytes());
 		jsonBox.updateFieldsBasedOnExistingData();
 		// Create a JumbfBoxBuilder object
 		JumbfBoxBuilder builder = new JumbfBoxBuilder(jsonContentType);		
