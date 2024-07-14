@@ -17,9 +17,6 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Map;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jws;
-import io.jsonwebtoken.JwsHeader;
 import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.SignatureException;
@@ -86,6 +83,19 @@ public class ProvApplication {
 			SecretKey key = Keys.hmacShaKeyFor(Base64.getDecoder().decode(JWT_KEY));
 
             // Parse the JWT
+			String header = Jwts.parser()
+							.verifyWith(key)
+							.build()
+							.parseSignedContent(jwt)
+							.getHeader().toString();
+			//Parse header to json format
+			header = header.replace("{", "{ \"");
+			header = header.replace("}", "\"}");
+			header = header.replace("=", "\":\"");
+			header = header.replace(",", "\", \"");
+			header = header.replaceAll("\\s+", "");
+			
+
             byte[] content= Jwts.parser()
                                 .verifyWith(key)
                                 .build()
@@ -93,19 +103,14 @@ public class ProvApplication {
 								.getPayload();
             // Print out the claims
 			String str = new String(content);
-			byte[] signature = Jwts.parser()
+			/*byte[] signature = Jwts.parser()
 								.verifyWith(key)
 								.build()
 								.parseSignedContent(jwt)
-								.getDigest();
+								.getDigest();*/
 			//String sign = new String(signature);
 			String sign = jwt;
-			String header = Jwts.parser()
-								.verifyWith(key)
-								.build()
-								.parseSignedContent(jwt)
-								.getHeader().toString();
-								
+
 			String[] ret = {header, str, sign};
 			return ret;
         } catch (SignatureException e) {
@@ -188,7 +193,7 @@ public class ProvApplication {
 			targetUrl = assetFileUrl + "-edited";
 			targetName = assetName + "-edited";
 			activity = create_activiy("a1", "Edition");
-			wasUsedBy = "\"used\": { "+ create_WU("u1", "a1", targetName, formattedDate) + "}";		
+			wasUsedBy = "\"used\": { "+ create_WU("u1", "a1", assetName, formattedDate) + "}";		
 			wasDerivedFrom = "\"wasDerivedFrom\": { "+ create_WDF("wDF1", targetName, assetName, "Edition") + "}";
 			wasAssociatedWith = "\"wasAssociatedWith\": {" + create_WAW("wAW1", targetName, "a1", model, "Image Editor") +"}";
 		}
@@ -211,7 +216,7 @@ public class ProvApplication {
 		JsonContentType jsonContentType = new JsonContentType();
 
 		String[] decoded_jwt = decode_and_validate_jwt(getJwt(content));
-		jsonBox.setContent(("{\"header\": " + decoded_jwt[0] + ", \"payload\": " + decoded_jwt[1] + ", \"signature\": " + decoded_jwt[2] + "}").getBytes());
+		jsonBox.setContent(("{\"header\": " + decoded_jwt[0] + ", \"payload\": " + decoded_jwt[1] + ", \"signature\": \"" + decoded_jwt[2] + "\"}").getBytes());
 		jsonBox.updateFieldsBasedOnExistingData();
 		// Create a JumbfBoxBuilder object
 		JumbfBoxBuilder builder = new JumbfBoxBuilder(jsonContentType);		
