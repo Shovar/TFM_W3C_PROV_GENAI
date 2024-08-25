@@ -4,6 +4,7 @@ public class Entity {
 
     private String type;
     private String id;
+    private String prompt;
 
 
     public Entity( String type, String id) {
@@ -11,7 +12,10 @@ public class Entity {
         this.id = id;
     }
 
-    public Entity() {
+    public Entity(String type, String id, String prompt) {
+        this.type = type;
+        this.id = id;
+        this.prompt = prompt;
     }
 
     public String getType() {
@@ -32,6 +36,9 @@ public class Entity {
 
     @Override
     public String toString() {
+        if (prompt != null) {
+            return "\"ex:"+ id +"\": { \"prov:type\": \""+ type +"\", \"prov:value\": \""+ prompt +"\"}";
+        }
         return "\"ex:"+ id +"\": { \"prov:type\": \""+ type +"\"" + "}";
     }
 

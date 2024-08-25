@@ -103,13 +103,15 @@ public class ProvApplication {
 								.getPayload();
             // Print out the claims
 			String str = new String(content);
-			/*byte[] signature = Jwts.parser()
+			String signature = Jwts.parser()
 								.verifyWith(key)
 								.build()
 								.parseSignedContent(jwt)
-								.getDigest();*/
-			//String sign = new String(signature);
-			String sign = jwt;
+								.getSignature();
+			java.util.Base64.Decoder decoder = java.util.Base64.getUrlDecoder();
+			String Signature = decoder.decode(signature).toString();
+
+			String sign = Signature;
 
 			String[] ret = {header, str, sign};
 			return ret;
@@ -121,36 +123,44 @@ public class ProvApplication {
 		return null;
     }
 
-	public static String create_entity(Boolean is_creation, String target, String source) throws Exception {
+	public static String create_entity_img(Boolean is_creation, String target, String source) throws Exception {
 		String ret_entity;
-		Entity entity = new Entity("img/jpeg", target);
 		if(is_creation == false){ //Si es una edición, añadir una segunda entidad
-			Entity entity2 = new Entity("img/jpeg", source);
-			ret_entity = "\"entity\":{" + entity.toString() + "," + entity2.toString() + "}";
+			Entity entity = new Entity("https://cv.iptc.org/newscodes/digitalsourcetype/compositeWithTrainedAlgorithmicMedia", target);
+			Entity entity2 = new Entity("https://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia", source);
+			ret_entity =  entity.toString() + "," + entity2.toString();
 		}
 		else{
-			ret_entity = "\"entity\" :{" + entity.toString() + "}";
+			Entity entity = new Entity("https://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia", target);
+			ret_entity =  entity.toString() ;
 		}
 		return ret_entity;
 	}
 
-	public static String create_activiy(String id, String type) throws Exception{
-		return "\"activity\": {\"ex:" + id + "\": { \"prov:type\": \"" +type+ "\"} }";
+	public static String create_entity_prompt( String id, String prompt) throws Exception {
+		String ret_entity;
+			Entity entity = new Entity("String", id, prompt);
+			ret_entity =  entity.toString();
+		return ret_entity;
 	}
 
-	public static String create_agent(String model, String version, String prompt, String u_prompt) throws Exception{
+	public static String create_activiy(String id, String type) throws Exception{
+		return "\"ex:" + id + "\": { \"prov:type\": \"" +type+ "\"}";
+	}
+
+	public static String create_agent(String model, String version, String prompt, String u_prompt, Boolean is_creation) throws Exception{
 		String username = System.getProperty("user.name");
-		Agent agent = new Agent( model ,"https://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia", version, prompt, u_prompt);
+		Agent agent = new Agent( model ,"Generative AI Model", version);
 		Agent person = new Agent(username);
 		String ret_agent = "\"agent\":{" + agent.toStringSW() + "," + person.toStringP() + "}";
 		return ret_agent ;
 	}
 
-	public static String create_WAIGB(String id, String targetName, String activity, String formattedDate, String model ,String version, String prompt, String u_prompt){
-		return "\"_:"+ id +"\":{ \"prov:entity\": \"ex:"+ targetName +"\" ,  \"prov:activity\": \"ex:"+ activity +"\", \"provai:model\": \""+ model + "\" , \"provai:version\": \""+ version + "\", \"provai:prompt\": \""+ prompt +"\", \"provai:u_prompt\": \""+ u_prompt +"\" , \"prov:Time\": \""+ formattedDate + "\"}";
+	public static String create_WAIGB(String id, String targetName, String activity, String formattedDate){
+		return "\"_:"+ id +"\":{ \"prov:entity\": \"ex:"+ targetName +"\" ,  \"prov:activity\": \"ex:"+ activity +"\", \"prov:Time\": \""+ formattedDate + "\"}";
 	}
 
-	public static String create_WAW(String id, String targetName, String activity, String agent, String role){
+	public static String create_WAW(String id, String activity, String agent, String role){
 		return "\"_:"+ id +"\":{ \"prov:activity\": \"ex:"+ activity +"\", \"prov:agent\": \"ex:"+ agent +"\", \"prov:role\": \""+ role +"\"}";
 	}
 
@@ -171,41 +181,68 @@ public class ProvApplication {
 	}
 
 	public static void create_prov(Boolean is_creation, String assetName ,String model, String version, String prompt, String u_prompt) throws Exception{
+		// Variable initialization
 		Date date = new Date();
 		SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy h:mm:ss a");
 		String formattedDate = sdf.format(date);
-		String wasGeneratedBy = new String();
 		String wasDerivedFrom = new String();
 		String wasUsedBy = new String();
 		String wasAssociatedWith = new String();
 		String targetUrl = new String();
 		String targetName = new String();
 		String content = new String();
-		String activity = new String();
-		String prefix = " \"prefix\": { \"xsd\": \"http://www.w3.org/2001/XMLSchema#\", \"ex\": \"http://example.com/\", \"prov\": \"http://www.w3.org/ns/prov#\", \"provai\": \"http://example.com/provgenai#\" }";
+		String model_activity = new String();
+		String username = System.getProperty("user.name");
 		if (is_creation) {
+			// Creation specific variables
 			targetUrl = assetFileUrl + "-created";
 			targetName = assetName + "-created";
-			activity = create_activiy("a1", "Creation");		
-			wasAssociatedWith = "\"wasAssociatedWith\": {" + create_WAW("wAW1", targetName, "a1", model, "Image Generator") + "}";
+			//Creation activity
+			model_activity = create_activiy("a1", "Creation");	
+			//Creation Relations
+			wasUsedBy = "\"used\": { "+ create_WU("u1", "a1", "Prompt", formattedDate) + "," 
+									  + create_WU("u2", "a1", "Uncond_prompt", formattedDate) +"}";
+			wasAssociatedWith = "\"wasAssociatedWith\": {" + create_WAW("wAW1", "a1", model, "Image Generator") + ',' 
+														   + create_WAW("wAW2",  "a2", username, "Prompt Writer") +  "}";
 				
 		}else{
+			// Edition specific variables
 			targetUrl = assetFileUrl + "-edited";
 			targetName = assetName + "-edited";
-			activity = create_activiy("a1", "Edition");
-			wasUsedBy = "\"used\": { "+ create_WU("u1", "a1", assetName, formattedDate) + "}";		
+			//Edition activity
+			model_activity = create_activiy("a1", "Edition");
+			//Edition Relations
+			wasUsedBy = "\"used\": { "+ create_WU("u1", "a1", assetName, formattedDate) + "," 
+									  + create_WU("u2", "a1", "Prompt", formattedDate) + "," 
+									  + create_WU("u3", "a1", "Uncond_prompt", formattedDate) + "}";		
 			wasDerivedFrom = "\"wasDerivedFrom\": { "+ create_WDF("wDF1", targetName, assetName, "Edition") + "}";
-			wasAssociatedWith = "\"wasAssociatedWith\": {" + create_WAW("wAW1", targetName, "a1", model, "Image Editor") +"}";
+			wasAssociatedWith = "\"wasAssociatedWith\": {" + create_WAW("wAW1", "a1", model, "Image Editor") + ',' 
+														   + create_WAW("wAW2",  "a2", username, "Prompt Writer") + "}";
 		}
-		wasGeneratedBy = "\"wasGeneratedBy\": { "+ create_WAIGB("wGB1", targetName, "a1", formattedDate, model, version, prompt, u_prompt)+"}";	
-		String username = System.getProperty("user.name");
+		// Prefix
+		String prefix = " \"prefix\": { \"xsd\": \"http://www.w3.org/2001/XMLSchema#\", \"ex\": \"http://example.com/\", \"prov\": \"http://www.w3.org/ns/prov#\" }";
+		//Entities
+		String entity_img  = create_entity_img(is_creation, targetName , assetName);
+		String promp_ent   = create_entity_prompt( "Prompt", prompt);
+		String u_promp_ent = create_entity_prompt( "Uncond_prompt", u_prompt);
+		String entity = "\"entity\" :{" + entity_img + "," + promp_ent + "," + u_promp_ent + "}";
+		//Agents
+		String agent = create_agent(model, version, prompt, u_prompt, is_creation);
+		//Activities
+		String write_activity = create_activiy("a2", "Write");
+		String activity = "\"activity\": {" + model_activity + "," + write_activity + "}";
+		//Relations
+		String wasGeneratedBy = "\"wasGeneratedBy\": { "+ create_WAIGB("wGB1", targetName, "a1", formattedDate) + ',' 
+												        + create_WAIGB("wGB2", "Prompt", "a2", formattedDate) + ',' 
+												        + create_WAIGB("wGB3", "Uncond_prompt", "a2", formattedDate) + "}";	
+		
 		String actedOnBehalfOf = "\"actedOnBehalfOf\": {"+ create_WABO("aOBO1", "a1", model, username) +"}";
-		String wasAttributedTo = "\"wasAttributedTo\": {"+ create_WAT("wAT1", targetName, model, "authorship") + "}"; 
-		String entity = create_entity(is_creation, targetName , assetName);
-		String agent = create_agent(model, version, prompt, u_prompt);
+		String wasAttributedTo = "\"wasAttributedTo\": {"+ create_WAT("wAT1", targetName, model, "authorship") + ',' 
+														 + create_WAT("wAT2", "Prompt", username, "authorship") + ',' 
+														 + create_WAT("wAT3", "Uncond_prompt", username, "authorship") + "}"; 
 		// Create the content string
 		if (is_creation) {
-			content = '{' + prefix + "," + entity + "," + activity +  "," + agent + ","  + actedOnBehalfOf + "," + wasGeneratedBy + "," + wasAssociatedWith + "," + wasAttributedTo + '}';	
+			content = '{' + prefix + "," + entity + "," + activity +  "," + agent + ","  + actedOnBehalfOf + "," + wasUsedBy + "," + wasGeneratedBy + "," + wasAssociatedWith + "," + wasAttributedTo + '}';	
 		}
 		else{
 			content = '{' + prefix + "," + entity + "," + activity +  "," + agent + "," + actedOnBehalfOf + "," + wasUsedBy + "," + wasGeneratedBy + "," + wasDerivedFrom + "," + wasAssociatedWith + "," + wasAttributedTo + '}'; ;
@@ -214,8 +251,9 @@ public class ProvApplication {
 		// Create a JsonBox object
 		JsonBox jsonBox = new JsonBox();
 		JsonContentType jsonContentType = new JsonContentType();
-
+        // Decode and validate the JWT
 		String[] decoded_jwt = decode_and_validate_jwt(getJwt(content));
+		// Set the content of the JsonBox object
 		jsonBox.setContent(("{\"header\": " + decoded_jwt[0] + ", \"payload\": " + decoded_jwt[1] + ", \"signature\": \"" + decoded_jwt[2] + "\"}").getBytes());
 		jsonBox.updateFieldsBasedOnExistingData();
 		// Create a JumbfBoxBuilder object
@@ -224,12 +262,12 @@ public class ProvApplication {
 		builder.setPaddingSize(10);
 		builder.appendContentBox(jsonBox);
 		JumbfBox givenJumbfBox = builder.getResult();
-		
-		
+		// Generate the Jumbf metadata
 		jpegCodestreamGenerator.generateJumbfMetadataToFile(List.of(givenJumbfBox), assetFileUrl, targetUrl);
 		List<JumbfBox> resultList = jpegCodestreamParser.parseMetadataFromFile(targetUrl);
 		assertEquals(1, resultList.size());
 
+		System.out.println("{\"header\": " + decoded_jwt[0] + ", \"payload\": " + decoded_jwt[1] + ", \"signature\": \"" + decoded_jwt[2] + "\"}");
 	}
 
 	public static void main(String[] args ) throws Exception {
@@ -315,11 +353,3 @@ public class ProvApplication {
 	}
 
 }
-
-	// entidad prompt, u_prompt
-	// agente persona 
-	// persona delega a agente software
-	// actividad persona writes prompt y u_prompt
-	// entidad prompt y u_prompt fue generada por la actividad
-	// entidad prompt y u_prompt fue atribuida a la persona
-	// prompt y u_prompt fueron usuados por la actividad de crear/editar

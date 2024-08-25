@@ -8,14 +8,10 @@ import org.springframework.test.context.ActiveProfiles;
 @ActiveProfiles("test")
 class ProvApplicationTests {
 
-	@Test
-	void createEntity() throws Exception {
-		assertEquals("\"entity\" :{" + "\"ex:sample\": { \"prov:type\": \"img/jpeg\"}}" , ProvApplication.create_entity(true, "sample" , "img/jpeg"));
-	}
 
 	@Test
 	void createAgent() {
-		Agent agent = new Agent("toni", "testType", "1.0", "prompt", "u_prompt");
+		Agent agent = new Agent("toni", "testType", "1.0");
 		assertEquals("\"ex:toni\": { \"prov:type\":{\"$\": \"prov:SoftwareAgent\", \"type\": \"testType\"},\"version\": \"1.0\",\"prompt\": \"prompt\",\"u_prompt\": \"u_prompt\"}", agent.toStringSW());
 	}
 
